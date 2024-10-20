@@ -1,4 +1,3 @@
-use std::env;
 use std::sync::Arc;
 use axum::{
     routing::get,
@@ -9,9 +8,10 @@ use axum::{
 };
 use axum::routing::{delete, put};
 use axum_swagger_ui::swagger_ui;
-use dotenv::dotenv;
+use shuttle_runtime::__internals::Context;
 use tokio_postgres::{Client, NoTls};
 use crate::actions::create::{delete_one, insert_one, select, update_one};
+use shuttle_runtime::SecretStore;
 
 mod actions;
 
@@ -38,12 +38,11 @@ async fn openapi_json_handler() -> impl IntoResponse {
 }
 
 #[shuttle_runtime::main]
-async fn main() -> shuttle_axum::ShuttleAxum {
-    dotenv().ok(); // Load .env file
+async fn main(#[shuttle_runtime::Secrets] secrets: SecretStore) -> shuttle_axum::ShuttleAxum {
 
-    let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
+    let secret = secrets.get("DATABASE_URL").context("secret was not found")?;
 
-    let (client, connection) = tokio_postgres::connect(&database_url, NoTls)
+    let (client, connection) = tokio_postgres::connect(&secret, NoTls)
         .await
         .expect("Failed to connect to the database");
 
